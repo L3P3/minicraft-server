@@ -1,0 +1,15 @@
+[package]
+name = "minicraft-server"
+version = "0.1.0"
+authors = ["L3P3 <dev@l3p3.de>"]
+edition = "2021"
+description = "Server for a more connected minicraft experience"
+repository = "https://github.com/L3P3/minicraft-server"
+license = "Zlib"
+keywords = ["minicraft", "server", "api", "web", "game"]
+categories = ["games"]
+
+[dependencies]
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "net"] }
+tokio-stream = { version = "0.1", features = ["net"] }
+warp = "0.3"
