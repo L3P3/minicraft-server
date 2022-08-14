@@ -11,6 +11,7 @@ This application will fix that!
 - [x] create [minicraft](https://github.com/L3P3/minicraft)
 - [x] read the [rust book](https://doc.rust-lang.org/book)
 - [x] create a minimal http api
+- [x] handle token cookie
 - [ ] handle user accounts
 - [ ] receive and send worlds
 - [ ] real time world serving
@@ -22,6 +23,7 @@ This application will fix that!
 It will be hosted at `https://l3p3.de/minicraft-api/`.
 
 - `/greet/:name`: just for testing
+- `/account`: just for testing
 
 ## How to run
 

@@ -17,16 +17,30 @@ fn stream_incoming_get() -> UnixListenerStream {
 #[tokio::main]
 async fn main() {
 	let route_index = warp::path::end()
-		.map(|| "For documentation, visit: https://github.com/L3P3/minicraft-server");
+		.map(|| "for documentation, visit: https://github.com/L3P3/minicraft-server");
 
 	let route_greet = warp::path("greet").and(
 		warp::path::end()
-			.map(|| "Greet who? => /name")
-			.or(warp::path::param().map(|name: String| format!("Hello, {}!", name))),
+			.map(|| "greet who? => /name")
+			.or(warp::path::param().map(|name: String| format!("hello, {}!", name))),
 	);
 
+	let route_account = warp::path("account")
+		.and(warp::path::end())
+		.and(
+			warp::filters::cookie::optional("token")
+				.map(|token_opt: Option<String>| match token_opt {
+					Some(token) => format!("current token: {}", token),
+					None => "token cookie missing!".to_string(),
+				})
+		);
+
 	let route_main = warp::get()
-		.and(route_index.or(route_greet))
+		.and(
+			route_index
+				.or(route_greet)
+				.or(route_account)
+		)
 		.with(warp::log::custom(|info| {
 			println!("{} {} {}", info.method(), info.path(), info.status());
 		}));
