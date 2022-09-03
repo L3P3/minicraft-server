@@ -1,6 +1,16 @@
 use tokio_stream::wrappers::UnixListenerStream;
 use warp::Filter;
 
+#[derive(serde::Deserialize)]
+struct AccountApiResponse {
+	//id: u16,
+	name: String,
+	//alias: String,
+	//email: String,
+	//rank: String,
+}
+
+
 fn stream_incoming_get() -> UnixListenerStream {
 	const PATH_SOCKET: &str = "/tmp/minicraft.socket";
 
@@ -27,13 +37,23 @@ async fn main() {
 
 	let route_account = warp::path("account")
 		.and(warp::path::end())
-		.and(
-			warp::filters::cookie::optional("token")
-				.map(|token_opt: Option<String>| match token_opt {
-					Some(token) => format!("current token: {}", token),
-					None => "token cookie missing!".to_string(),
-				})
-		);
+		.and(warp::filters::cookie::optional("token"))
+		.and_then(|token_opt: Option<String>| async move {
+			Ok::<String, warp::Rejection>(match token_opt {
+				Some(token) => {
+					// TODO move this out
+					let request_template = reqwest::Client::new()
+						.get("http://127.0.0.1:8000/svr/account/account.json")
+						.header(reqwest::header::USER_AGENT, "minicraft-server");
+					let resp = request_template.try_clone().unwrap()
+						.query(&[("token", token)])
+						.send().await.expect("cannot reach account api");
+					let json: AccountApiResponse = resp.json().await.expect("cannot parse api response");
+					format!("current account: {}", json.name)
+				},
+				None => "token cookie missing!".to_string(),
+			})
+		});
 
 	let route_main = warp::get()
 		.and(
