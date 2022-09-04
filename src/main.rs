@@ -1,3 +1,4 @@
+use std::sync::Arc;
 use tokio_stream::wrappers::UnixListenerStream;
 use warp::Filter;
 
@@ -26,6 +27,12 @@ fn stream_incoming_get() -> UnixListenerStream {
 
 #[tokio::main]
 async fn main() {
+	let request_template_ref = Arc::new(
+		reqwest::Client::new()
+			.get("http://127.0.0.1:8000/svr/account/account.json")
+			.header(reqwest::header::USER_AGENT, "minicraft-server")
+	);
+
 	let route_index = warp::path::end()
 		.map(|| "for documentation, visit: https://github.com/L3P3/minicraft-server");
 
@@ -38,21 +45,23 @@ async fn main() {
 	let route_account = warp::path("account")
 		.and(warp::path::end())
 		.and(warp::filters::cookie::optional("token"))
-		.and_then(|token_opt: Option<String>| async move {
-			Ok::<String, warp::Rejection>(match token_opt {
-				Some(token) => {
-					// TODO move this out
-					let request_template = reqwest::Client::new()
-						.get("http://127.0.0.1:8000/svr/account/account.json")
-						.header(reqwest::header::USER_AGENT, "minicraft-server");
-					let resp = request_template.try_clone().unwrap()
-						.query(&[("token", token)])
-						.send().await.expect("cannot reach account api");
-					let json: AccountApiResponse = resp.json().await.expect("cannot parse api response");
-					format!("current account: {}", json.name)
-				},
-				None => "token cookie missing!".to_string(),
-			})
+		.and_then(move |token_opt: Option<String>| {
+			let request_template_ref = request_template_ref.clone();
+			async move {
+				Ok::<String, warp::Rejection>(match token_opt {
+					Some(token) => {
+						let resp = request_template_ref
+							.try_clone().unwrap()
+							.query(&[("token", token)])
+							.send()
+							.await.expect("cannot reach account api");
+						let json: AccountApiResponse = resp.json()
+							.await.expect("cannot parse api response");
+						format!("current account: {}", json.name)
+					},
+					None => "token cookie missing!".to_string(),
+				})
+			}
 		});
 
 	let route_main = warp::get()
