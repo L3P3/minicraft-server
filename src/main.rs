@@ -3,8 +3,8 @@ use tokio_stream::wrappers::UnixListenerStream;
 use warp::Filter;
 
 #[derive(serde::Deserialize)]
-struct AccountApiResponse {
-	//id: u16,
+struct Account {
+	id: u16,
 	name: String,
 	//alias: String,
 	//email: String,
@@ -33,6 +33,26 @@ async fn main() {
 			.header(reqwest::header::USER_AGENT, "minicraft-server")
 	);
 
+	let filter_account = warp::filters::cookie::cookie("token")
+		.and_then(move |token: String| {
+			let request_template_ref = request_template_ref.clone();
+			async move {
+				let account = request_template_ref
+					.try_clone().unwrap()
+					.query(&[("token", token)])
+					.send()
+					.await.expect("cannot reach account api")
+					.json::<Account>()
+					.await.expect("cannot parse account api response");
+				if account.id != 0 {
+					Ok(account)
+				}
+				else {
+					Err(warp::reject::reject())
+				}
+			}
+		});
+
 	let route_index = warp::path::end()
 		.map(|| "for documentation, visit: https://github.com/L3P3/minicraft-server");
 
@@ -42,27 +62,13 @@ async fn main() {
 			.or(warp::path::param().map(|name: String| format!("hello, {}!", name))),
 	);
 
-	let route_account = warp::path("account")
-		.and(warp::path::end())
-		.and(warp::filters::cookie::optional("token"))
-		.and_then(move |token_opt: Option<String>| {
-			let request_template_ref = request_template_ref.clone();
-			async move {
-				Ok::<String, warp::Rejection>(match token_opt {
-					Some(token) => {
-						let resp = request_template_ref
-							.try_clone().unwrap()
-							.query(&[("token", token)])
-							.send()
-							.await.expect("cannot reach account api");
-						let json: AccountApiResponse = resp.json()
-							.await.expect("cannot parse api response");
-						format!("current account: {}", json.name)
-					},
-					None => "token cookie missing!".to_string(),
-				})
-			}
-		});
+	let route_account = warp::path("account").and(
+		warp::path::end()
+		.and(
+			filter_account
+			.map(|account: Account| format!("current account: {}", account.name))
+		)
+	);
 
 	let route_main = warp::get()
 		.and(

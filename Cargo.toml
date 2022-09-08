@@ -1,6 +1,6 @@
 [package]
 name = "minicraft-server"
-version = "0.3.1"
+version = "0.3.2"
 authors = ["L3P3 <dev@l3p3.de>"]
 edition = "2021"
 description = "Server for a more connected minicraft experience"
